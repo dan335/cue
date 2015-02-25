@@ -18,7 +18,7 @@ Example
     cue.addJob('job2', false, function(task, done) {
         console.log('doing '+task.jobName+' '+task.data.blah)
         Meteor.setTimeout(function() {
-            done()
+            done('error message')
         }, 2000)
     })
 
