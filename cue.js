@@ -2,133 +2,174 @@
 // Job - different type of jobs - 'sendEmail'
 // task - each task - sendEmail('bob')
 
-Cue = function(maxTasksAtOnce) {
+// TODO: set max time per task in job.  error if taking longer than max time
+// TODO: stats, how long each job is taking
+// TODO: bool for should there only be on task for a job at a time
+// don't insert if there already is one
 
-    // per server
-    this.maxTasksAtOnce = maxTasksAtOnce
+if (Meteor.isServer) {
 
-    this.intervalHandle = null
-    this.intervalMs = 1000 * 5
-    this.jobs = []
+    Cue = {
 
-    // how many times do we retry a task when there is an error
-    // setting job's retryOnError to false cancels this
-    this.maxTaskTries = 5
+        // per server
+        maxTasksAtOnce: 5,
 
-    // how many tasks are we currently working on
-    // only do maxTasksAtOnce
-    this.numCurrentTasks = 0
-}
+        intervalHandle: null,
+        intervalMs: 1000 * 5,
+        jobs: [],
 
-Cue.prototype.dropTasks = function() {
-    CueTasks.remove({})
-}
+        // how many times do we retry a task when there is an error
+        // setting job's retryOnError to false cancels this
+        maxTaskTries: 3,
 
-Cue.prototype.start = function() {
-    var self = this
-    self.stop()
-
-    Meteor.setInterval(function() {
-        self._doATask()
-    }, self.intervalMs)
-}
-
-Cue.prototype.stop = function() {
-    Meteor.clearInterval(this.intervalHandle)
-}
-
-Cue.prototype.addJob = function(name, retryOnError, jobFunction) {
-    this.jobs.push({name:name, job:jobFunction, retryOnError:retryOnError})
-}
-
-// isAsync is here instead of on addJob for good reason
-Cue.prototype.addTask = function(jobName, isAsync, data) {
-    check(jobName, String)
-    check(isAsync, Boolean)
-    check(data, Object)
-    CueTasks.insert({jobName:jobName, isAsync:isAsync, data:data, doing:false, numTries:0})
-}
-
-
-Cue.prototype._doATask = function() {
-    var self = this
-
-    // are we at capacity?
-    if (self.numCurrentTasks >= self.maxTasksAtOnce) {
-        return
+        // how many tasks are we currently working on
+        // only do maxTasksAtOnce
+        numCurrentTasks: 0
     }
 
-    // get a task
-    var task = CueTasks.findAndModify({
-        query: {doing:false},
-        update: {$set:{doing:true}, $inc:{numTries:1}},
-        sort: {createdAt:-1},
-        new: true
-    })
-
-    if (!task) {
-        return
+    Cue.dropTasks = function() {
+        CueTasks.remove({})
     }
 
-    // find task's job
-    var job = _.find(self.jobs,function(j) {
-        return j.name == task.jobName
-    })
-
-    if (!job) {
-        return
+    Cue.dropTask = function(taskId) {
+        check(taskId, String)
+        CueTasks.remove(taskId)
     }
 
-    // if task is synchronous
-    if (!task.isAsync) {
+    Cue.start = function() {
+        var self = this
+        self.stop()
 
-        // check to see if task in this job is already running
-        if (CueTasks.find({_id: {$ne:task._id}, jobName:job.name, doing:true}).count()) {
+        Meteor.setInterval(function() {
+            self._doATask()
+        }, self.intervalMs)
+    }
 
-            // abort task, one is already running
-            CueTasks.update(task._id, {$set:{doing:false}, $inc:{numTries:-1}})
 
-            // try an async one
-            // get a task
-            var task = CueTasks.findAndModify({
-                query: {doing:false, isAsync:true},
-                update: {$set:{doing:true}, $inc:{numTries:1}},
-                sort: {createdAt:-1},
-                new: true
-            })
+    Cue.stop = function() {
+        Meteor.clearInterval(this.intervalHandle)
+    }
 
-            if (!task) {
-                return
-            }
+    // retryOnError
+    Cue.addJob = function(name, options, jobFunction) {
+        check(name, String)
+        check(options.retryOnError, Boolean)
+        this.jobs.push({name:name, job:jobFunction, retryOnError:options.retryOnError})
+    }
 
-            // find task's job
-            var job = _.find(self.jobs,function(j) {
-                return j.name == task.jobName
-            })
+    // isAsync - is here instead of on addJob for good reason
+    // unique - only allow one of job in queue
+    Cue.addTask = function(jobName, options, data) {
+        check(jobName, String)
+        check(options.isAsync, Boolean)
+        check(options.unique, Boolean)
+        check(data, Object)
 
-            if (!job) {
-                return
+        if (options.unique) {
+            if (CueTasks.find({jobName:jobName}).count()) {
+                return false
             }
         }
+
+        CueTasks.insert({
+            jobName:jobName,
+            isAsync:options.isAsync,
+            data:data,
+            doing:false,
+            numTries:0,
+            createdAt: new Date()
+        })
     }
 
-    // mark task as doing
-    //CueTasks.update(task._id, {$set:{doing:true}, $inc:{numTries:1}})
-    self.numCurrentTasks++
 
-    Meteor.defer(function() {
-        job.job(task, function(error) {
-            if (error) {
-                console.error(' --- ')
-                console.error(task.jobName+' errored. Try '+task.numTries)
-                console.error(error)
-                console.error(task)
-                console.error(' --- ')
+    Cue._doATask = function() {
+        var self = this
 
-                if (job.retryOnError) {
-                    if (task.numTries < self.maxTaskTries) {
-                        // mark task to be done again
-                        CueTasks.update(task._id, {$set:{doing:false, error:error}})
+        // are we at capacity?
+        if (self.numCurrentTasks >= self.maxTasksAtOnce) {
+            return
+        }
+
+        // get a task
+        var task = CueTasks.findAndModify({
+            query: {doing:false},
+            update: {$set:{doing:true}, $inc:{numTries:1}},
+            sort: {createdAt:-1},
+            new: true
+        })
+
+        if (!task) {
+            return
+        }
+
+        // find task's job
+        var job = _.find(self.jobs,function(j) {
+            return j.name == task.jobName
+        })
+
+        if (!job) {
+            console.error('job '+task.jobName+' not found')
+            return
+        }
+
+        // if task is synchronous
+        if (!task.isAsync) {
+
+            // check to see if task in this job is already running
+            if (CueTasks.find({_id: {$ne:task._id}, jobName:job.name, doing:true}).count()) {
+
+                // abort task, one is already running
+                CueTasks.update(task._id, {$set:{doing:false}, $inc:{numTries:-1}})
+
+                // try an async one
+                // get a task
+                var task = CueTasks.findAndModify({
+                    query: {doing:false, isAsync:true},
+                    update: {$set:{doing:true}, $inc:{numTries:1}},
+                    sort: {createdAt:-1},
+                    new: true
+                })
+
+                if (!task) {
+                    return
+                }
+
+                // find task's job
+                var job = _.find(self.jobs,function(j) {
+                    return j.name == task.jobName
+                })
+
+                if (!job) {
+                    return
+                }
+            }
+        }
+
+        // mark task as doing
+        //CueTasks.update(task._id, {$set:{doing:true}, $inc:{numTries:1}})
+        self.numCurrentTasks++
+
+        task.startTime = new Date()
+
+        Meteor.defer(function() {
+            job.job(task, function(error) {
+                if (error) {
+                    console.error(' --- ')
+                    console.error(task.jobName+' errored. Try '+task.numTries)
+                    console.error(error)
+                    console.error(task)
+                    console.error(' --- ')
+
+                    task.error = error  // for stats
+
+                    if (job.retryOnError) {
+                        if (task.numTries < self.maxTaskTries) {
+                            // mark task to be done again
+                            CueTasks.update(task._id, {$set:{doing:false, error:error}})
+                        } else {
+                            CueTasks.remove(task._id)
+                        }
+
                     } else {
                         CueTasks.remove(task._id)
                     }
@@ -137,21 +178,49 @@ Cue.prototype._doATask = function() {
                     CueTasks.remove(task._id)
                 }
 
-            } else {
-                CueTasks.remove(task._id)
-            }
-
-            self.numCurrentTasks--
-            self._doATask()
+                task.finishTime = new Date()
+                Cue.recordFinish(task)
+                self.numCurrentTasks--
+                self._doATask()
+            })
         })
-    })
 
-    if (CueTasks.find().count() > 0) {
-        self._doATask()
+        if (CueTasks.find().count() > 0) {
+            self._doATask()
+        }
     }
+
+    Cue.retryTask = function(taskId) {
+        CueTasks.update(taskId, {$set:{doing:false, numTries:0, error:undefined, createdAt:new Date()}})
+    }
+
+    Cue.resetStats = function() {
+        CueStats.update({}, {$set: {timesRun:0}}, {multi:true})
+    }
+
+    Cue.recordFinish = function(task) {
+        var runTime = task.finishTime - task.startTime
+
+        CueStats.upsert({
+            jobName:task.jobName
+        }, {$set: {
+            jobName:task.jobName,
+            lastRunMs:runTime,
+            lastRunDate: new Date()
+        }, $inc: {
+            timesRunToday:1,
+            msToday:runTime
+        }})
+    }
+
+
+    // reset stats each day
+    var endOfDay = moment().endOf('day')
+    var timeUntilMidnight = endOfDay - moment()
+
+    Meteor.setTimeout(function() {
+        Meteor.setInterval(function() {
+            Cue.resetStats()
+        }, 1000 * 60 * 60 * 24)
+    }, timeUntilMidnight)
 }
-
-
-
-
-CueTasks = new Mongo.Collection('cuetasks')

@@ -1,0 +1,12 @@
+#cueTable {
+    width:100%;
+}
+
+#cueTable thead td {
+    font-weight:bold;
+}
+
+#cueTable td {
+    padding:10px;
+    border-top:1px solid #777;
+}

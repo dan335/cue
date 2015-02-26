@@ -1,0 +1,59 @@
+<template name="cueTasks">
+    <div id="cueTaskListContainer">
+
+        <button id="dropTasksButton" class="btn btn-primary">Drop All Tasks</button>
+
+        <br><br>
+
+        <table id="cueTable">
+            <thead>
+                <tr>
+                    <td></td>
+                    <td>Job Name</td>
+                    <td>Doing Task</td>
+                    <td>Created</td>
+                    <td>Num Tries</td>
+                    <td>Data</td>
+                    <td>_id</td>
+                    <td>Error</td>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each tasks}}
+                    {{> cueTask}}
+                {{/each}}
+            </tbody>
+        </table>
+    </div>
+</template>
+
+
+<template name="cueTask">
+    <tr>
+        <td>
+            <button class="btn btn-primary dropTaskButton" data-id="{{_id}}">X</button>
+            <button class="btn btn-primary retryTaskButton" data-id="{{_id}}">retry</button>
+        </td>
+        <td>
+            {{jobName}}
+        </td>
+        <td>
+            {{doing}}
+        </td>
+        <td>
+            {{createdAt}}
+        </td>
+        <td>
+            {{round numTries}}
+        </td>
+        <td>
+            {{taskData}}
+        </td>
+        <td>
+            {{_id}}
+        </td>
+        <td>
+            {{error}}
+        </td>
+    </tr>
+</template>

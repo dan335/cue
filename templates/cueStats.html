@@ -1,0 +1,35 @@
+<template name="cueStats">
+    <div id="cueStatsContainer">
+
+        <table id="cueTable">
+            <thead>
+                <tr>
+                    <td>Job Name</td>
+                    <td>Times Runs Today</td>
+                    <td>ms Today</td>
+                    <td>Average ms</td>
+                    <td>Last Run ms</td>
+                    <td>Last Run Date</td>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each stats}}
+                    {{> cueStat}}
+                {{/each}}
+            </tbody>
+        </table>
+
+    </div>
+</template>
+
+
+<template name="cueStat">
+    <tr>
+        <td>{{jobName}}</td>
+        <td>{{round timesRunToday}}</td>
+        <td>{{round msToday}}</td>
+        <td>{{round average}}</td>
+        <td>{{round lastRunMs}}</td>
+        <td>{{lastRunCalendar}}</td>
+    </tr>
+</template>
