@@ -2,17 +2,16 @@
 // Job - different type of jobs - 'sendEmail'
 // task - each task - sendEmail('bob')
 
+// TODO: catch errors
 // TODO: set max time per task in job.  error if taking longer than max time
-// TODO: stats, how long each job is taking
-// TODO: bool for should there only be on task for a job at a time
-// don't insert if there already is one
+// TODO: have a template that lists all jobs and has a button to run one
 
 if (Meteor.isServer) {
 
     Cue = {
 
         // per server
-        maxTasksAtOnce: 5,
+        maxTasksAtOnce: 10,
 
         intervalHandle: null,
         intervalMs: 1000 * 5,
@@ -28,12 +27,16 @@ if (Meteor.isServer) {
     }
 
     Cue.dropTasks = function() {
-        CueTasks.remove({})
+        CueTasks.remove({}, {multi:true})
     }
 
     Cue.dropTask = function(taskId) {
         check(taskId, String)
         CueTasks.remove(taskId)
+    }
+
+    Cue.dropInProgressTasks = function() {
+        CueTasks.remove({doing:true}, {multi:true})
     }
 
     Cue.start = function() {
@@ -51,22 +54,30 @@ if (Meteor.isServer) {
     }
 
     // retryOnError
+    // maxMs - optional, remove job if taking longer than this
     Cue.addJob = function(name, options, jobFunction) {
+        var maxMs = options.maxMs || null
         check(name, String)
         check(options.retryOnError, Boolean)
-        this.jobs.push({name:name, job:jobFunction, retryOnError:options.retryOnError})
+        this.jobs.push({
+            name:name,
+            job:jobFunction,
+            retryOnError:options.retryOnError,
+            maxMs: maxMs
+            })
     }
 
     // isAsync - is here instead of on addJob for good reason
     // unique - only allow one of job in queue
     Cue.addTask = function(jobName, options, data) {
+
         check(jobName, String)
         check(options.isAsync, Boolean)
         check(options.unique, Boolean)
         check(data, Object)
 
         if (options.unique) {
-            if (CueTasks.find({jobName:jobName}).count()) {
+            if (CueTasks.find({jobName:jobName, data:data}).count()) {
                 return false
             }
         }
@@ -152,7 +163,28 @@ if (Meteor.isServer) {
         task.startTime = new Date()
 
         Meteor.defer(function() {
+            // set timer to cancel job
+            if (job.maxMs) {
+                task.maxMsTimerHandle = Meteor.setTimeout(function() {
+                    console.error(' --- ')
+                    console.error(task.jobName+' took longer than '+job.maxMs+' and was canceled.')
+                    console.error(task)
+                    console.error(' --- ')
+                    CueTasks.remove(task._id)
+                    self.numCurrentTasks--
+                    self._doATask()
+                }, job.maxMs)
+            }
+
             job.job(task, function(error) {
+                // cancel timer to stop job
+                if (job.maxMs) {
+                    Meteor.clearTimeout(task.maxMsTimerHandle)
+                }
+
+                task.finishTime = new Date()
+                Cue.recordFinish(task)
+
                 if (error) {
                     console.error(' --- ')
                     console.error(task.jobName+' errored. Try '+task.numTries)
@@ -178,11 +210,11 @@ if (Meteor.isServer) {
                     CueTasks.remove(task._id)
                 }
 
-                task.finishTime = new Date()
-                Cue.recordFinish(task)
                 self.numCurrentTasks--
                 self._doATask()
             })
+
+
         })
 
         if (CueTasks.find().count() > 0) {
@@ -223,4 +255,19 @@ if (Meteor.isServer) {
             Cue.resetStats()
         }, 1000 * 60 * 60 * 24)
     }, timeUntilMidnight)
+
+
+    //cancel tasks that have been going for 30 min
+    Meteor.setInterval(function() {
+        var cutoff = moment().subtract(30, 'minutes').toDate()
+        CueTasks.find({createdAt: {$lt: cutoff}}).forEach(function(t) {
+            console.error(' --- ')
+            console.error(t.jobName+' took longer than max time and was canceled.')
+            console.error(t)
+            console.error(' --- ')
+
+            CueTasks.remove(t._id)
+        })
+    }, 1000 * 60 * 2)
+
 }

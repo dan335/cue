@@ -2,7 +2,7 @@ if (Meteor.isClient) {
 
     Template.cueStats.helpers({
         stats: function() {
-            return CueStats.find({}, {sort:{jobName:1}})
+            return CueStats.find({}, {sort:{msToday:-1}})
         }
     })
 
