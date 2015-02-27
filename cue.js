@@ -1,9 +1,9 @@
-// Cue - cue contains jobs
-// Job - different type of jobs - 'sendEmail'
+// cue - cue contains jobs
+// job - different type of jobs - 'sendEmail'
 // task - each task - sendEmail('bob')
 
 // TODO: catch errors
-// TODO: set max time per task in job.  error if taking longer than max time
+// TODO: log errors, create template that can view them
 // TODO: have a template that lists all jobs and has a button to run one
 
 if (Meteor.isServer) {
@@ -23,25 +23,47 @@ if (Meteor.isServer) {
 
         // how many tasks are we currently working on
         // only do maxTasksAtOnce
-        numCurrentTasks: 0
+        numCurrentTasks: 0,
+
+
+        // cancel any task that isn't finished in this time
+        // catches tasks that error and don't return
+        maxTime: 1000 * 60 * 30
     }
 
+
     Cue.dropTasks = function() {
-        CueTasks.remove({}, {multi:true})
+        CueTasks.remove({})
+        self.numCurrentTasks = 0
     }
+
 
     Cue.dropTask = function(taskId) {
         check(taskId, String)
         CueTasks.remove(taskId)
+        Cue._resetNumCurrentTasks()
     }
 
+
+    // maybe call before start
+    // drop tasks that never ended when app restarted
     Cue.dropInProgressTasks = function() {
-        CueTasks.remove({doing:true}, {multi:true})
+        CueTasks.remove({doing:true})
+        Cue._resetNumCurrentTasks()
     }
 
+
+    Cue.restartInProgressTasks = function() {
+        CueTasks.update({doing:true}, {$set:{doing:false, numTries:0}})
+        Cue._resetNumCurrentTasks()
+    }
+
+
+    // start doing tasks
     Cue.start = function() {
         var self = this
         self.stop()
+        self.numCurrentTasks = 0
 
         Meteor.setInterval(function() {
             self._doATask()
@@ -49,31 +71,51 @@ if (Meteor.isServer) {
     }
 
 
+    // stop doing tasks
     Cue.stop = function() {
         Meteor.clearInterval(this.intervalHandle)
+        this.numCurrentTasks = 0
     }
 
-    // retryOnError
+
+    // define a job
+    // options
+    // retryOnError - if job returns error retry up to max times
     // maxMs - optional, remove job if taking longer than this
     Cue.addJob = function(name, options, jobFunction) {
-        var maxMs = options.maxMs || null
+
+        var maxMs = options.maxMs || 0
+        var retryOnError = options.retryOnError || false
+
         check(name, String)
-        check(options.retryOnError, Boolean)
+        check(retryOnError, Match.OneOf(null, Boolean))
+        check(maxMs, Match.OneOf(null, Number))
+
+        if (typeof(jobFunction) != "function") {
+            throw new Meteor.Error('Job '+name+"'s function isn't a function.")
+        }
+
         this.jobs.push({
             name:name,
             job:jobFunction,
-            retryOnError:options.retryOnError,
+            retryOnError:retryOnError,
             maxMs: maxMs
             })
     }
 
-    // isAsync - is here instead of on addJob for good reason
-    // unique - only allow one of job in queue
+
+    // add a task to the queue
+    // options
+    // isAsync - true = run multiple tasks of the same type at once
+    // unique - only allow one task of each job type in queue
     Cue.addTask = function(jobName, options, data) {
 
+        var isAsync = options.isAsync || false
+        var unique = options.unique || false
+
         check(jobName, String)
-        check(options.isAsync, Boolean)
-        check(options.unique, Boolean)
+        check(isAsync, Match.OneOf(null, Boolean))
+        check(unique, Match.OneOf(null, Boolean))
         check(data, Object)
 
         if (options.unique) {
@@ -84,12 +126,80 @@ if (Meteor.isServer) {
 
         CueTasks.insert({
             jobName:jobName,
-            isAsync:options.isAsync,
+            isAsync:isAsync,
             data:data,
             doing:false,
             numTries:0,
             createdAt: new Date()
         })
+    }
+
+
+    Cue._getTaskToDo = function() {
+        var self = this
+        var skipTypes = []
+        var tryAgain = true
+        var task = null
+
+        do {
+            // get a task
+            task = CueTasks.findAndModify({
+                query: {doing:false, jobName:{$nin:skipTypes}},
+                update: {$set:{doing:true}, $inc:{numTries:1}},
+                sort: {createdAt:-1},
+                new: true
+            })
+
+            if (!task) {
+
+                // no tasks to do, stop
+                tryAgain = false
+
+            } else {
+
+                // find task's job
+                var job = _.find(self.jobs,function(j) {
+                    return j.name == task.jobName
+                })
+
+                if (!job) {
+
+                    // abort
+                    console.error('job '+task.jobName+' not found')
+                    tryAgain = false
+
+                } else {
+
+                    if (task.isAsync) {
+
+                        // if task is is async then do task
+                        tryAgain = false
+
+                    } else {
+
+                        // if task is sync
+                        // check to see if task of this job type is already running
+                        if (CueTasks.find({_id: {$ne:task._id}, jobName:job.name, doing:true}).count() == 0) {
+
+                            // if not then do task
+                            tryAgain = false
+
+                        } else {
+
+                            // do another type of task, this one is already running
+                            CueTasks.update(task._id, {$set:{doing:false}, $inc:{numTries:-1}})
+                            skipTypes.push(task.jobName)
+                            task = null
+                        }
+                    }
+
+                }
+            }
+
+        }
+        while (tryAgain)
+
+        return {task:task, job:job}
     }
 
 
@@ -102,58 +212,12 @@ if (Meteor.isServer) {
         }
 
         // get a task
-        var task = CueTasks.findAndModify({
-            query: {doing:false},
-            update: {$set:{doing:true}, $inc:{numTries:1}},
-            sort: {createdAt:-1},
-            new: true
-        })
+        var result = Cue._getTaskToDo()
+        var task = result.task
+        var job = result.job
 
-        if (!task) {
+        if (!task || !job) {
             return
-        }
-
-        // find task's job
-        var job = _.find(self.jobs,function(j) {
-            return j.name == task.jobName
-        })
-
-        if (!job) {
-            console.error('job '+task.jobName+' not found')
-            return
-        }
-
-        // if task is synchronous
-        if (!task.isAsync) {
-
-            // check to see if task in this job is already running
-            if (CueTasks.find({_id: {$ne:task._id}, jobName:job.name, doing:true}).count()) {
-
-                // abort task, one is already running
-                CueTasks.update(task._id, {$set:{doing:false}, $inc:{numTries:-1}})
-
-                // try an async one
-                // get a task
-                var task = CueTasks.findAndModify({
-                    query: {doing:false, isAsync:true},
-                    update: {$set:{doing:true}, $inc:{numTries:1}},
-                    sort: {createdAt:-1},
-                    new: true
-                })
-
-                if (!task) {
-                    return
-                }
-
-                // find task's job
-                var job = _.find(self.jobs,function(j) {
-                    return j.name == task.jobName
-                })
-
-                if (!job) {
-                    return
-                }
-            }
         }
 
         // mark task as doing
@@ -222,13 +286,17 @@ if (Meteor.isServer) {
         }
     }
 
+
     Cue.retryTask = function(taskId) {
         CueTasks.update(taskId, {$set:{doing:false, numTries:0, error:undefined, createdAt:new Date()}})
+        Cue._resetNumCurrentTasks()
     }
 
+
     Cue.resetStats = function() {
-        CueStats.update({}, {$set: {timesRun:0}}, {multi:true})
+        CueStats.remove({})
     }
+
 
     Cue.recordFinish = function(task) {
         var runTime = task.finishTime - task.startTime
@@ -246,6 +314,11 @@ if (Meteor.isServer) {
     }
 
 
+    Cue._resetNumCurrentTasks = function() {
+        Cue.numCurrentTasks = CueTasks.find({doing:true}).count()
+    }
+
+
     // reset stats each day
     var endOfDay = moment().endOf('day')
     var timeUntilMidnight = endOfDay - moment()
@@ -259,7 +332,9 @@ if (Meteor.isServer) {
 
     //cancel tasks that have been going for 30 min
     Meteor.setInterval(function() {
+        var foundTask = false
         var cutoff = moment().subtract(30, 'minutes').toDate()
+
         CueTasks.find({createdAt: {$lt: cutoff}}).forEach(function(t) {
             console.error(' --- ')
             console.error(t.jobName+' took longer than max time and was canceled.')
@@ -267,7 +342,14 @@ if (Meteor.isServer) {
             console.error(' --- ')
 
             CueTasks.remove(t._id)
+            foundTask = true
         })
-    }, 1000 * 60 * 2)
+
+        // reset
+        if (foundTask) {
+            Cue._resetNumCurrentTasks()
+        }
+
+    }, Cue.maxTime)
 
 }
