@@ -2,10 +2,8 @@
 // job - different type of jobs - 'sendEmail'
 // task - each task - sendEmail('bob')
 
-// TODO: button to finish jobs that are in progress. use before restarting server
 // TODO: catch errors
 // TODO: log errors, create template that can view them
-// TODO: have a template that lists all jobs and has a button to run one
 
 if (Meteor.isServer) {
 
@@ -17,7 +15,7 @@ if (Meteor.isServer) {
         maxTasksAtOnce: 10,
 
         intervalHandle: null,
-        intervalMs: 1000 * 5,
+        intervalMs: 1000 * 3,
         jobs: [],
 
         // how many times do we retry a task when there is an error
