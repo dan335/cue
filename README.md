@@ -2,7 +2,7 @@ Job queue for Meteor
 
 Used in Dominus https://dominusgame.net
 
-Can work across multiple servers.
+Works across multiple servers.
 
 
 Example

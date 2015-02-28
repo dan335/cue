@@ -9,10 +9,10 @@
             <thead>
                 <tr>
                     <td>Job Name</td>
-                    <td>Times Runs Today</td>
-                    <td>ms Today</td>
-                    <td>Average ms</td>
-                    <td>Last Run ms</td>
+                    <td style="text-align:right;">Times Runs Today</td>
+                    <td style="text-align:right;">Today</td>
+                    <td style="text-align:right;">Average</td>
+                    <td style="text-align:right;">Last Run</td>
                     <td>Last Run Date</td>
                 </tr>
             </thead>
@@ -30,10 +30,10 @@
 <template name="cueStat">
     <tr>
         <td>{{jobName}}</td>
-        <td>{{round timesRunToday}}</td>
-        <td>{{round msToday}}</td>
-        <td>{{round average}}</td>
-        <td>{{round lastRunMs}}</td>
+        <td style="text-align:right;">{{round timesRunToday}}</td>
+        <td style="text-align:right;">{{humanize msToday}}</td>
+        <td style="text-align:right;">{{humanize average}}</td>
+        <td style="text-align:right;">{{humanize lastRunMs}}</td>
         <td>{{lastRunCalendar}}</td>
     </tr>
 </template>

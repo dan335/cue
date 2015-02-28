@@ -21,6 +21,35 @@ if (Meteor.isClient) {
 
         average: function() {
             return this.msToday / this.timesRunToday
+        },
+
+        humanize: function(num) {
+            var dur = moment.duration(Math.round(num))
+            var ms = dur.milliseconds()
+            var sec = dur.seconds()
+            var min = dur.minutes()
+
+            var str = ''
+
+            if (min) {
+                str += min+':'
+            }
+
+            if (sec) {
+                str += sec+'.'
+            }
+
+            if (ms) {
+                str += ms
+            }
+
+            return str
+        },
+
+        round: function(num) {
+            var parts = num.toString().split(".");
+            parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+            return parts.join(".");
         }
     })
 

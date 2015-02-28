@@ -114,19 +114,24 @@ if (Meteor.isServer) {
         check(data, Object)
 
         if (options.unique) {
-            if (CueTasks.find({jobName:jobName, data:data}).count()) {
-                return false
-            }
+            CueTasks.upsert({jobName:jobName, data:data}, {$setOnInsert: {
+                jobName:jobName,
+                isAsync:isAsync,
+                data:data,
+                doing:false,
+                numTries:0,
+                createdAt: new Date()
+            }})
+        } else {
+            CueTasks.insert({
+                jobName:jobName,
+                isAsync:isAsync,
+                data:data,
+                doing:false,
+                numTries:0,
+                createdAt: new Date()
+            })
         }
-
-        CueTasks.insert({
-            jobName:jobName,
-            isAsync:isAsync,
-            data:data,
-            doing:false,
-            numTries:0,
-            createdAt: new Date()
-        })
     }
 
 
