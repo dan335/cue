@@ -2,11 +2,14 @@
 // job - different type of jobs - 'sendEmail'
 // task - each task - sendEmail('bob')
 
+// TODO: button to finish jobs that are in progress. use before restarting server
 // TODO: catch errors
 // TODO: log errors, create template that can view them
 // TODO: have a template that lists all jobs and has a button to run one
 
 if (Meteor.isServer) {
+
+    CueData.upsert({name: 'stopped'}, {$set: {name: 'stopped', value: false}})
 
     Cue = {
 
@@ -21,41 +24,32 @@ if (Meteor.isServer) {
         // setting job's retryOnError to false cancels this
         maxTaskTries: 3,
 
-        // how many tasks are we currently working on
-        // only do maxTasksAtOnce
-        numCurrentTasks: 0,
-
-
         // cancel any task that isn't finished in this time
         // catches tasks that error and don't return
-        maxTime: 1000 * 60 * 30
+        maxTime: 1000 * 60 * 30,
     }
 
 
     Cue.dropTasks = function() {
         CueTasks.remove({})
-        self.numCurrentTasks = 0
     }
 
 
     Cue.dropTask = function(taskId) {
         check(taskId, String)
         CueTasks.remove(taskId)
-        Cue._resetNumCurrentTasks()
     }
 
 
-    // maybe call before start
+    // call before calling start
     // drop tasks that never ended when app restarted
     Cue.dropInProgressTasks = function() {
         CueTasks.remove({doing:true})
-        Cue._resetNumCurrentTasks()
     }
 
 
     Cue.restartInProgressTasks = function() {
         CueTasks.update({doing:true}, {$set:{doing:false, numTries:0}})
-        Cue._resetNumCurrentTasks()
     }
 
 
@@ -63,7 +57,7 @@ if (Meteor.isServer) {
     Cue.start = function() {
         var self = this
         self.stop()
-        self.numCurrentTasks = 0
+        CueData.update({name: 'stopped'}, {$set: {value:false}})
 
         Meteor.setInterval(function() {
             self._doATask()
@@ -72,9 +66,12 @@ if (Meteor.isServer) {
 
 
     // stop doing tasks
+    // this won't stop tasks currently running
+    // use before restarting server
+    // wait for tasks to finish before restarting
     Cue.stop = function() {
         Meteor.clearInterval(this.intervalHandle)
-        this.numCurrentTasks = 0
+        CueData.update({name: 'stopped'}, {$set: {value:true}})
     }
 
 
@@ -206,8 +203,13 @@ if (Meteor.isServer) {
     Cue._doATask = function() {
         var self = this
 
+        if (CueData.findOne({name:'stopped'}).value) {
+            return
+        }
+
         // are we at capacity?
-        if (self.numCurrentTasks >= self.maxTasksAtOnce) {
+        var numDoing = CueTasks.find({doing:true}).count()
+        if (numDoing >= self.maxTasksAtOnce) {
             return
         }
 
@@ -220,10 +222,6 @@ if (Meteor.isServer) {
             return
         }
 
-        // mark task as doing
-        //CueTasks.update(task._id, {$set:{doing:true}, $inc:{numTries:1}})
-        self.numCurrentTasks++
-
         task.startTime = new Date()
 
         Meteor.defer(function() {
@@ -235,7 +233,6 @@ if (Meteor.isServer) {
                     console.error(task)
                     console.error(' --- ')
                     CueTasks.remove(task._id)
-                    self.numCurrentTasks--
                     self._doATask()
                 }, job.maxMs)
             }
@@ -274,7 +271,6 @@ if (Meteor.isServer) {
                     CueTasks.remove(task._id)
                 }
 
-                self.numCurrentTasks--
                 self._doATask()
             })
 
@@ -289,7 +285,6 @@ if (Meteor.isServer) {
 
     Cue.retryTask = function(taskId) {
         CueTasks.update(taskId, {$set:{doing:false, numTries:0, error:undefined, createdAt:new Date()}})
-        Cue._resetNumCurrentTasks()
     }
 
 
@@ -314,11 +309,6 @@ if (Meteor.isServer) {
     }
 
 
-    Cue._resetNumCurrentTasks = function() {
-        Cue.numCurrentTasks = CueTasks.find({doing:true}).count()
-    }
-
-
     // reset stats each day
     var endOfDay = moment().endOf('day')
     var timeUntilMidnight = endOfDay - moment()
@@ -332,7 +322,6 @@ if (Meteor.isServer) {
 
     //cancel tasks that have been going for 30 min
     Meteor.setInterval(function() {
-        var foundTask = false
         var cutoff = moment().subtract(30, 'minutes').toDate()
 
         CueTasks.find({createdAt: {$lt: cutoff}}).forEach(function(t) {
@@ -342,13 +331,7 @@ if (Meteor.isServer) {
             console.error(' --- ')
 
             CueTasks.remove(t._id)
-            foundTask = true
         })
-
-        // reset
-        if (foundTask) {
-            Cue._resetNumCurrentTasks()
-        }
 
     }, Cue.maxTime)
 

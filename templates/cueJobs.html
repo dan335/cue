@@ -1,0 +1,28 @@
+<template name="cueJobs">
+    <div id="cueJobsContainer">
+
+        {{#each jobs}}
+            {{> cueJob}}
+        {{/each}}
+
+    </div>
+</template>
+
+
+<template name="cueJob">
+    <div>
+        <input type="checkbox" class="asyncCheckbox"> async
+        &nbsp;&nbsp;
+
+        <input type="checkbox" class="uniqueCheckbox"> unique
+        &nbsp;&nbsp;
+
+        data: <input type="text" class="dataInput" value="{}" style="width:300px;">
+        &nbsp;&nbsp;
+
+        <button class="btn btn-primary runJobButton" data-name="{{this}}">Run</button>
+        &nbsp;&nbsp;&nbsp;
+
+        {{this}}
+    </div>
+</template>

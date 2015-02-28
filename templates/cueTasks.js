@@ -3,6 +3,14 @@ if (Meteor.isClient) {
         tasks: function() {
             return CueTasks.find({},{sort: {createdAt:-1}})
         },
+
+        isStopped: function() {
+            var stopped = CueData.findOne({name:'stopped'})
+            if (stopped) {
+                return stopped.value
+            }
+
+        }
     })
 
 
@@ -14,14 +22,39 @@ if (Meteor.isClient) {
 
 
     Template.cueTasks.events({
-        'click .dropTasksButton': function(event, template) {
+        'click #dropTasksButton': function(event, template) {
             event.preventDefault()
             Meteor.call('cueDropTasks')
+        },
+
+        'click #finishThenStopButton': function(event, template) {
+            event.preventDefault()
+            Meteor.call('cueStop')
+        },
+
+        'click #startButton': function(event, template) {
+            event.preventDefault()
+            Meteor.call('cueStart')
+        },
+
+        'click #dropInProgressTasksButton': function(event, template) {
+            event.preventDefault()
+            Meteor.call('cueDropInProgressTasks')
+        },
+
+        'click #dropInProgressTasksButton': function(event, template) {
+            event.preventDefault()
+            Meteor.call('cueDropInProgressTasks')
+        },
+
+        'click #restartInProgressTasksButton': function(event, template) {
+            event.preventDefault()
+            Meteor.call('cueRestartInProgressTasks')
         }
     })
 
 
-    Template.cueTasks.events({
+    Template.cueTask.events({
         'click .dropTaskButton': function(event, template) {
             event.preventDefault()
             var id = event.currentTarget.getAttribute('data-id')
@@ -32,13 +65,14 @@ if (Meteor.isClient) {
             event.preventDefault()
             var id = event.currentTarget.getAttribute('data-id')
             Meteor.call('cueRetryTask', id)
-        },
+        }
     })
 
 
     Template.cueTasks.created = function() {
         this.autorun(function() {
             Meteor.subscribe('cueTasks')
+            Meteor.subscribe('cueStatus')
         })
     }
 }

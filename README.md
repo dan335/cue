@@ -2,6 +2,8 @@ Job queue for Meteor
 
 Used in Dominus https://dominusgame.net
 
+Can work across multiple servers.
+
 
 Example
 ---
@@ -22,5 +24,6 @@ Example
 
 Templates
 ---
-    {{> cueStats}}
-    {{> cueTasks}}
+    {{> cueStats}} - stats on how long tasks take
+    {{> cueTasks}} - list of tasks in queue and buttons to manage them
+    {{> cueJobs}} - list of jobs and buttons to run them

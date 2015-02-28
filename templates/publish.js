@@ -6,4 +6,8 @@ if (Meteor.isServer) {
     Meteor.publish('cueStats', function() {
         return CueStats.find()
     })
+
+    Meteor.publish('cueStatus', function() {
+        return CueData.find({name:'stopped'})
+    })
 }

@@ -7,6 +7,13 @@ if (Meteor.isClient) {
     })
 
 
+    Template.cueStats.events({
+        'click #resetStatsButton': function(event, template) {
+            Meteor.call('cueResetStats')
+        }
+    })
+
+
     Template.cueStat.helpers({
         lastRunCalendar: function() {
             return moment(new Date(this.lastRunDate)).calendar()

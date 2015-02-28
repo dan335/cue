@@ -16,6 +16,30 @@ if (Meteor.isServer) {
 
         cueResetStats: function() {
             Cue.resetStats()
+        },
+
+        cueStop: function() {
+            Cue.stop()
+        },
+
+        cueStart: function() {
+            Cue.start()
+        },
+
+        cueRestartInProgressTasks: function() {
+            Cue.restartInProgressTasks()
+        },
+
+        cueJobNames: function() {
+            return _.pluck(Cue.jobs, 'name')
+        },
+
+        cueRunJob: function(name, options, data) {
+            check(name, String)
+            check(options.isAsync, Boolean)
+            check(options.unique, Boolean)
+            check(data, Object)
+            Cue.addTask(name, options, data)
         }
     })
 }

@@ -2,6 +2,18 @@
     <div id="cueTaskListContainer">
 
         <button id="dropTasksButton" class="btn btn-primary">Drop All Tasks</button>
+        <button id="dropInProgressTasksButton" class="btn btn-primary">Drop All Tasks In Progress</button>
+        <button id="restartInProgressTasksButton" class="btn btn-primary">Restart All Tasks In Progress</button>
+        <button id="startButton" class="btn btn-primary">Start</button>
+        <button id="finishThenStopButton" class="btn btn-primary">Finish Then Stop</button>
+
+        &nbsp;&nbsp;
+        
+        {{#if isStopped}}
+            Cue is stopped.
+        {{else}}
+            Cue is running.
+        {{/if}}
 
         <br><br>
 
