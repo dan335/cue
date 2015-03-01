@@ -103,15 +103,25 @@ if (Meteor.isServer) {
     // options
     // isAsync - true = run multiple tasks of the same type at once
     // unique - only allow one task of each job type in queue
+    // delay - delay job for x ms, set to 0 to not delay
     Cue.addTask = function(jobName, options, data) {
 
         var isAsync = options.isAsync || false
         var unique = options.unique || false
+        var delay = options.delay || 0
 
         check(jobName, String)
         check(isAsync, Match.OneOf(null, Boolean))
         check(unique, Match.OneOf(null, Boolean))
+        check(delay, Number)
         check(data, Object)
+
+        if (delay) {
+            Meteor.setTimeout(function() {
+                Cue.addTask(jobName, {isAsync:isAsync, unique:unique, delay:0}, data)
+            }, delay)
+            return
+        }
 
         if (options.unique) {
             CueTasks.upsert({jobName:jobName, data:data}, {$setOnInsert: {
@@ -247,7 +257,7 @@ if (Meteor.isServer) {
                 }
 
                 task.finishTime = new Date()
-                Cue.recordFinish(task)
+                Cue._recordFinish(task)
 
                 if (error) {
                     console.error(' --- ')
@@ -296,7 +306,7 @@ if (Meteor.isServer) {
     }
 
 
-    Cue.recordFinish = function(task) {
+    Cue._recordFinish = function(task) {
         var runTime = task.finishTime - task.startTime
 
         CueStats.upsert({
@@ -315,8 +325,8 @@ if (Meteor.isServer) {
     // reset stats each day
     var endOfDay = moment().endOf('day')
     var timeUntilMidnight = endOfDay - moment()
-
     Meteor.setTimeout(function() {
+        Cue.resetStats()
         Meteor.setInterval(function() {
             Cue.resetStats()
         }, 1000 * 60 * 60 * 24)

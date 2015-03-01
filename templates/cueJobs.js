@@ -12,11 +12,13 @@ Template.cueJob.events({
         var name = event.currentTarget.getAttribute('data-name')
         var async = template.$('.asyncCheckbox')
         var unique = template.$('.uniqueCheckbox')
+        var delay = Number(template.$('.delayInput').val())
         var data = template.find('.dataInput')
 
         var options = {
             isAsync: async.is(':checked'),
-            unique: unique.is(':checked')
+            unique: unique.is(':checked'),
+            delay: delay
             }
 
         var dataObject = EJSON.parse($(data).val())

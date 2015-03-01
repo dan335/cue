@@ -28,8 +28,13 @@ if (Meteor.isClient) {
             var ms = dur.milliseconds()
             var sec = dur.seconds()
             var min = dur.minutes()
+            var hours = dur.hours()
 
             var str = ''
+
+            if (hours) {
+                str += hours+':'
+            }
 
             if (min) {
                 str += min+':'
