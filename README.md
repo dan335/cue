@@ -53,7 +53,7 @@ API
     // options = retryOnError, maxMs
     // retryOnError - retry job if it retruns an error
     // maxMs - remove job if it runs for longer than this
-    // Function is called with two variables, 'task' and 'done'. Task is the task object.  Call done() at the end of the function.  Call task('error') if job errors.
+    // Function is called with two variables, 'task' and 'done'. Task is the task object.  Call done() at the end of the function.  Call done('error message') if job errors.
     Cue.addJob(name, options, function)
 
     // add a task to the queue
