@@ -1,7 +1,7 @@
 if (Meteor.isClient) {
     Template.cueTasks.helpers({
         tasks: function() {
-            return CueTasks.find({},{sort: {createdAt:-1}})
+            return CueTasks.find({},{sort: {createdAt:1}})
         },
 
         isStopped: function() {

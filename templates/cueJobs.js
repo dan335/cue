@@ -1,6 +1,6 @@
 Template.cueJobs.helpers({
     jobs: function() {
-        return Template.instance().jobNames.get()
+        return Template.instance().jobNames.get().sort()
     }
 })
 

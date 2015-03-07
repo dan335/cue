@@ -59,8 +59,8 @@ API
     // add a task to the queue
     // options = isAsync, unique, delay
     // isAsync - true to run multiple tasks of the same type at once.  false to only process one of each type at a time.
-    // unique - only allow one task of each job type in the queue.
-    // delay - delay task for this number of ms.  set to 0 to not delay
+    // unique - only allow one task with the same jobname and data allowed in the queue.
+    // delay - delay task for this number of ms.
     Cue.addTask(jobName, options, data)
 
     Cue.retryTask(taskId)

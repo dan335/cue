@@ -7,7 +7,11 @@
 
 if (Meteor.isServer) {
 
-    CueData.upsert({name: 'stopped'}, {$set: {name: 'stopped', value: false}})
+    //CueData.upsert({name: 'stopped'}, {$set: {name: 'stopped', value: false}})
+    var stopped = CueData.findOne({name:'stopped'})
+    if (!stopped) {
+        CueData.insert({name:stopped, value:false})
+    }
 
     Cue = {
 
@@ -156,7 +160,7 @@ if (Meteor.isServer) {
             task = CueTasks.findAndModify({
                 query: {doing:false, jobName:{$nin:skipTypes}},
                 update: {$set:{doing:true}, $inc:{numTries:1}},
-                sort: {createdAt:-1},
+                sort: {createdAt:1},
                 new: true
             })
 
