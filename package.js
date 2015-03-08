@@ -1,6 +1,6 @@
 Package.describe({
     name: 'danimal:cue',
-    version: '1.0.9',
+    version: '1.0.10',
     summary: 'Job Queue for Meteor',
     git: 'https://github.com/dan335/cue',
     documentation: 'README.md'
