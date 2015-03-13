@@ -220,7 +220,11 @@ if (Meteor.isServer) {
     Cue._doATask = function() {
         var self = this
 
-        if (CueData.findOne({name:'stopped'}).value) {
+        var stopped = CueData.findOne({name:'stopped'})
+        if (!stopped) {
+            return
+        }
+        if (stopped.value) {
             return
         }
 
