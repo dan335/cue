@@ -10,7 +10,7 @@ if (Meteor.isServer) {
     //CueData.upsert({name: 'stopped'}, {$set: {name: 'stopped', value: false}})
     var stopped = CueData.findOne({name:'stopped'})
     if (!stopped) {
-        CueData.insert({name:stopped, value:false})
+        CueData.insert({name:'stopped', value:false})
     }
 
     Cue = {
