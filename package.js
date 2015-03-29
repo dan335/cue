@@ -10,7 +10,7 @@ Package.onUse(function(api) {
     api.versionsFrom('1.0.3.1');
     api.use('mongo');
     api.use('templating', 'client');
-    api.use('fongandrew:find-and-modify');
+    api.use('fongandrew:find-and-modify@0.2.0');
     api.addFiles([
         'collections.js',
         'templates/methods.js'
