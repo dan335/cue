@@ -8,9 +8,9 @@
 if (Meteor.isServer) {
 
     //CueData.upsert({name: 'stopped'}, {$set: {name: 'stopped', value: false}})
-    var stopped = CueData.findOne({name:'stopped'})
+    var stopped = CueData.findOne({name:'stopped'});
     if (!stopped) {
-        CueData.insert({name:'stopped', value:false})
+        CueData.insert({name:'stopped', value:false});
     }
 
     Cue = {
@@ -29,42 +29,42 @@ if (Meteor.isServer) {
         // cancel any task that isn't finished in this time
         // catches tasks that error and don't return
         maxTime: 1000 * 60 * 30,
-    }
+    };
 
 
     Cue.dropTasks = function() {
-        CueTasks.remove({})
-    }
+        CueTasks.remove({});
+    };
 
 
     Cue.dropTask = function(taskId) {
-        check(taskId, String)
-        CueTasks.remove(taskId)
-    }
+        check(taskId, String);
+        CueTasks.remove(taskId);
+    };
 
 
     // call before calling start
     // drop tasks that never ended when app restarted
     Cue.dropInProgressTasks = function() {
-        CueTasks.remove({doing:true})
-    }
+        CueTasks.remove({doing:true});
+    };
 
 
     Cue.restartInProgressTasks = function() {
-        CueTasks.update({doing:true}, {$set:{doing:false, numTries:0}})
-    }
+        CueTasks.update({doing:true}, {$set:{doing:false, numTries:0}});
+    };
 
 
     // start doing tasks
     Cue.start = function() {
-        var self = this
-        self.stop()
-        CueData.update({name: 'stopped'}, {$set: {value:false}})
+        var self = this;
+        self.stop();
+        CueData.update({name: 'stopped'}, {$set: {value:false}});
 
         Meteor.setInterval(function() {
-            self._doATask()
-        }, self.intervalMs)
-    }
+            self._doATask();
+        }, self.intervalMs);
+    };
 
 
     // stop doing tasks
@@ -72,9 +72,9 @@ if (Meteor.isServer) {
     // use before restarting server
     // wait for tasks to finish before restarting
     Cue.stop = function() {
-        Meteor.clearInterval(this.intervalHandle)
-        CueData.update({name: 'stopped'}, {$set: {value:true}})
-    }
+        Meteor.clearInterval(this.intervalHandle);
+        CueData.update({name: 'stopped'}, {$set: {value:true}});
+    };
 
 
     // define a job
@@ -83,15 +83,15 @@ if (Meteor.isServer) {
     // maxMs - optional, remove job if taking longer than this
     Cue.addJob = function(name, options, jobFunction) {
 
-        var maxMs = options.maxMs || 0
-        var retryOnError = options.retryOnError || false
+        var maxMs = options.maxMs || 0;
+        var retryOnError = options.retryOnError || false;
 
-        check(name, String)
-        check(retryOnError, Match.OneOf(null, Boolean))
-        check(maxMs, Match.OneOf(null, Number))
+        check(name, String);
+        check(retryOnError, Match.OneOf(null, Boolean));
+        check(maxMs, Match.OneOf(null, Number));
 
         if (typeof(jobFunction) != "function") {
-            throw new Meteor.Error('Job '+name+"'s function isn't a function.")
+            throw new Meteor.Error('Job '+name+"'s function isn't a function.");
         }
 
         this.jobs.push({
@@ -99,8 +99,8 @@ if (Meteor.isServer) {
             job:jobFunction,
             retryOnError:retryOnError,
             maxMs: maxMs
-            })
-    }
+            });
+    };
 
 
     // add a task to the queue
@@ -110,21 +110,21 @@ if (Meteor.isServer) {
     // delay - delay job for x ms, set to 0 to not delay
     Cue.addTask = function(jobName, options, data) {
 
-        var isAsync = options.isAsync || false
-        var unique = options.unique || false
-        var delay = options.delay || 0
+        var isAsync = options.isAsync || false;
+        var unique = options.unique || false;
+        var delay = options.delay || 0;
 
-        check(jobName, String)
-        check(isAsync, Match.OneOf(null, Boolean))
-        check(unique, Match.OneOf(null, Boolean))
-        check(delay, Number)
-        check(data, Object)
+        check(jobName, String);
+        check(isAsync, Match.OneOf(null, Boolean));
+        check(unique, Match.OneOf(null, Boolean));
+        check(delay, Number);
+        check(data, Object);
 
         if (delay) {
             Meteor.setTimeout(function() {
-                Cue.addTask(jobName, {isAsync:isAsync, unique:unique, delay:0}, data)
-            }, delay)
-            return
+                Cue.addTask(jobName, {isAsync:isAsync, unique:unique, delay:0}, data);
+            }, delay);
+            return;
         }
 
         if (options.unique) {
@@ -135,7 +135,7 @@ if (Meteor.isServer) {
                 doing:false,
                 numTries:0,
                 createdAt: new Date()
-            }})
+            }});
         } else {
             CueTasks.insert({
                 jobName:jobName,
@@ -144,16 +144,17 @@ if (Meteor.isServer) {
                 doing:false,
                 numTries:0,
                 createdAt: new Date()
-            })
+            });
         }
-    }
+    };
 
 
     Cue._getTaskToDo = function() {
-        var self = this
-        var skipTypes = []
-        var tryAgain = true
-        var task = null
+        var self = this;
+        var skipTypes = [];
+        var tryAgain = true;
+        var task = null;
+        var job = null;
 
         do {
             // get a task
@@ -162,48 +163,49 @@ if (Meteor.isServer) {
                 update: {$set:{doing:true}, $inc:{numTries:1}},
                 sort: {createdAt:1},
                 new: true
-            })
+            });
 
             if (!task) {
 
                 // no tasks to do, stop
-                tryAgain = false
+                tryAgain = false;
 
             } else {
 
                 // find task's job
-                var job = _.find(self.jobs,function(j) {
-                    return j.name == task.jobName
-                })
+                job = null;
+                job = _.find(self.jobs,function(j) {
+                    return j.name == task.jobName;
+                });
 
                 if (!job) {
 
                     // abort
-                    console.error('job '+task.jobName+' not found')
-                    tryAgain = false
+                    console.error('job '+task.jobName+' not found');
+                    tryAgain = false;
 
                 } else {
 
                     if (task.isAsync) {
 
                         // if task is is async then do task
-                        tryAgain = false
+                        tryAgain = false;
 
                     } else {
 
                         // if task is sync
                         // check to see if task of this job type is already running
-                        if (CueTasks.find({_id: {$ne:task._id}, jobName:job.name, doing:true}).count() == 0) {
+                        if (CueTasks.find({_id: {$ne:task._id}, jobName:job.name, doing:true}).count() === 0) {
 
                             // if not then do task
-                            tryAgain = false
+                            tryAgain = false;
 
                         } else {
 
                             // do another type of task, this one is already running
-                            CueTasks.update(task._id, {$set:{doing:false}, $inc:{numTries:-1}})
-                            skipTypes.push(task.jobName)
-                            task = null
+                            CueTasks.update(task._id, {$set:{doing:false}, $inc:{numTries:-1}});
+                            skipTypes.push(task.jobName);
+                            task = null;
                         }
                     }
 
@@ -211,111 +213,111 @@ if (Meteor.isServer) {
             }
 
         }
-        while (tryAgain)
+        while (tryAgain);
 
-        return {task:task, job:job}
-    }
+        return {task:task, job:job};
+    };
 
 
     Cue._doATask = function() {
-        var self = this
+        var self = this;
 
-        var stopped = CueData.findOne({name:'stopped'})
+        var stopped = CueData.findOne({name:'stopped'});
         if (!stopped) {
-            return
+            return;
         }
         if (stopped.value) {
-            return
+            return;
         }
 
         // are we at capacity?
-        var numDoing = CueTasks.find({doing:true}).count()
+        var numDoing = CueTasks.find({doing:true}).count();
         if (numDoing >= self.maxTasksAtOnce) {
-            return
+            return;
         }
 
         // get a task
-        var result = Cue._getTaskToDo()
-        var task = result.task
-        var job = result.job
+        var result = Cue._getTaskToDo();
+        var task = result.task;
+        var job = result.job;
 
         if (!task || !job) {
-            return
+            return;
         }
 
-        task.startTime = new Date()
+        task.startTime = new Date();
 
         Meteor.defer(function() {
             // set timer to cancel job
             if (job.maxMs) {
                 task.maxMsTimerHandle = Meteor.setTimeout(function() {
-                    console.error(' --- ')
-                    console.error(task.jobName+' took longer than '+job.maxMs+' and was canceled.')
-                    console.error(task)
-                    console.error(' --- ')
-                    CueTasks.remove(task._id)
-                    self._doATask()
-                }, job.maxMs)
+                    console.error(' --- ');
+                    console.error(task.jobName+' took longer than '+job.maxMs+' and was canceled.');
+                    console.error(task);
+                    console.error(' --- ');
+                    CueTasks.remove(task._id);
+                    self._doATask();
+                }, job.maxMs);
             }
 
             job.job(task, function(error) {
                 // cancel timer to stop job
                 if (job.maxMs) {
-                    Meteor.clearTimeout(task.maxMsTimerHandle)
+                    Meteor.clearTimeout(task.maxMsTimerHandle);
                 }
 
-                task.finishTime = new Date()
-                Cue._recordFinish(task)
+                task.finishTime = new Date();
+                Cue._recordFinish(task);
 
                 if (error) {
-                    console.error(' --- ')
-                    console.error(task.jobName+' errored. Try '+task.numTries)
-                    console.error(error)
-                    console.error(task)
-                    console.error(' --- ')
+                    console.error(' --- ');
+                    console.error(task.jobName+' errored. Try '+task.numTries);
+                    console.error(error);
+                    console.error(task);
+                    console.error(' --- ');
 
-                    task.error = error  // for stats
+                    task.error = error;  // for stats
 
                     if (job.retryOnError) {
                         if (task.numTries < self.maxTaskTries) {
                             // mark task to be done again
-                            CueTasks.update(task._id, {$set:{doing:false, error:error}})
+                            CueTasks.update(task._id, {$set:{doing:false, error:error}});
                         } else {
-                            CueTasks.remove(task._id)
+                            CueTasks.remove(task._id);
                         }
 
                     } else {
-                        CueTasks.remove(task._id)
+                        CueTasks.remove(task._id);
                     }
 
                 } else {
-                    CueTasks.remove(task._id)
+                    CueTasks.remove(task._id);
                 }
 
-                self._doATask()
-            })
+                self._doATask();
+            });
 
 
-        })
+        });
 
         if (CueTasks.find().count() > 0) {
-            self._doATask()
+            self._doATask();
         }
-    }
+    };
 
 
     Cue.retryTask = function(taskId) {
-        CueTasks.update(taskId, {$set:{doing:false, numTries:0, error:undefined, createdAt:new Date()}})
-    }
+        CueTasks.update(taskId, {$set:{doing:false, numTries:0, error:undefined, createdAt:new Date()}});
+    };
 
 
     Cue.resetStats = function() {
-        CueStats.remove({})
-    }
+        CueStats.remove({});
+    };
 
 
     Cue._recordFinish = function(task) {
-        var runTime = task.finishTime - task.startTime
+        var runTime = task.finishTime - task.startTime;
 
         CueStats.upsert({
             jobName:task.jobName
@@ -326,34 +328,38 @@ if (Meteor.isServer) {
         }, $inc: {
             timesRunToday:1,
             msToday:runTime
-        }})
-    }
+        }});
+    };
 
 
     // reset stats each day
-    var endOfDay = moment().endOf('day')
-    var timeUntilMidnight = endOfDay - moment()
+    var midnight = new Date();
+    midnight.setHours(24,0,0,0);
+    var timeUntilMidnight = midnight.getTime() - new Date().getTime();
+    
     Meteor.setTimeout(function() {
-        Cue.resetStats()
+        Cue.resetStats();
         Meteor.setInterval(function() {
-            Cue.resetStats()
-        }, 1000 * 60 * 60 * 24)
-    }, timeUntilMidnight)
+            Cue.resetStats();
+        }, 1000 * 60 * 60 * 24);
+    }, timeUntilMidnight);
 
 
     //cancel tasks that have been going for 30 min
     Meteor.setInterval(function() {
-        var cutoff = moment().subtract(30, 'minutes').toDate()
+        // now - 30 minutes
+        var thirtyMin = 1000 * 60 * 30;
+        var cutoff = new Date(new Date().getTime() - thirtyMin);
 
         CueTasks.find({createdAt: {$lt: cutoff}}).forEach(function(t) {
-            console.error(' --- ')
-            console.error(t.jobName+' took longer than max time and was canceled.')
-            console.error(t)
-            console.error(' --- ')
+            console.error(' --- ');
+            console.error(t.jobName+' took longer than max time and was canceled.');
+            console.error(t);
+            console.error(' --- ');
 
-            CueTasks.remove(t._id)
-        })
+            CueTasks.remove(t._id);
+        });
 
-    }, Cue.maxTime)
+    }, Cue.maxTime);
 
 }
