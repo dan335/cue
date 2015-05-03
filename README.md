@@ -53,6 +53,7 @@ API
     // options = retryOnError, maxMs
     // retryOnError - retry job if it retruns an error
     // maxMs - remove job if it runs for longer than this
+    // maxAtOnce - limit number of async tasks of this job running at once
     // Function is called with two variables, 'task' and 'done'. Task is the task object.  Call done() at the end of the function.  Call done('error message') if job errors.
     Cue.addJob(name, options, function)
 

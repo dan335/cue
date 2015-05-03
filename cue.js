@@ -81,10 +81,14 @@ if (Meteor.isServer) {
     // options
     // retryOnError - if job returns error retry up to max times
     // maxMs - optional, remove job if taking longer than this
+    // maxAtOnce - limit number of async tasks of this job running at once
+    //      if set to 0 then it uses the global maxTasksAtOnce
+    //      should be less than global maxTasksAtOnce
     Cue.addJob = function(name, options, jobFunction) {
 
         var maxMs = options.maxMs || 0;
         var retryOnError = options.retryOnError || false;
+        var maxAtOnce = options.maxAtOnce || 0;
 
         check(name, String);
         check(retryOnError, Match.OneOf(null, Boolean));
@@ -98,7 +102,8 @@ if (Meteor.isServer) {
             name:name,
             job:jobFunction,
             retryOnError:retryOnError,
-            maxMs: maxMs
+            maxMs: maxMs,
+            maxAtOnce: maxAtOnce
             });
     };
 
@@ -188,8 +193,29 @@ if (Meteor.isServer) {
 
                     if (task.isAsync) {
 
-                        // if task is is async then do task
-                        tryAgain = false;
+                        // if maxAtOnce is 0 then do task
+                        if (job.maxAtOnce === 0) {
+
+                            tryAgain = false;
+
+                        } else {
+
+                            // check maxAtOnce
+                            if (CueTasks.find({_id: {$ne:task._id}, jobName:job.name, doing:true}).count()  < job.maxAtOnce) {
+
+                                // do task
+                                tryAgain = false;
+
+                            } else {
+
+                                // do another type of task, this one already has maxAtOnce running
+                                CueTasks.update(task._id, {$set:{doing:false}, $inc:{numTries:-1}});
+                                skipTypes.push(task.jobName);
+                                task = null;
+                            }
+                        }
+
+
 
                     } else {
 
@@ -336,7 +362,7 @@ if (Meteor.isServer) {
     var midnight = new Date();
     midnight.setHours(24,0,0,0);
     var timeUntilMidnight = midnight.getTime() - new Date().getTime();
-    
+
     Meteor.setTimeout(function() {
         Cue.resetStats();
         Meteor.setInterval(function() {
