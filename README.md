@@ -58,11 +58,13 @@ API
     Cue.addJob(name, options, function)
 
     // add a task to the queue
-    // options = isAsync, unique, delay
+    // options = isAsync, unique, delay, delayUntil
     // isAsync - true to run multiple tasks of the same type at once.  false to only process one of each type at a time.
     // unique - only allow one task with the same jobname and data allowed in the queue.
     // delay - delay task for this number of ms.
+    // delayUntil - Takes a javascript date. Don't start task until this time.
     Cue.addTask(jobName, options, data)
+    Cue.addTask('hardwork', {isAsync:true, unique:true}, {blah:true});
 
     Cue.retryTask(taskId)
 

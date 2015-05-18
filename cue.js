@@ -24,7 +24,10 @@ if (Meteor.isServer) {
 
         // how many times do we retry a task when there is an error
         // setting job's retryOnError to false cancels this
-        maxTaskTries: 3,
+        maxTaskTries: 5,
+
+        // amout of time after a job errors to delay before trying it again
+        delayAfterError: 5000,
 
         // cancel any task that isn't finished in this time
         // catches tasks that error and don't return
@@ -113,11 +116,15 @@ if (Meteor.isServer) {
     // isAsync - true = run multiple tasks of the same type at once
     // unique - only allow one task of each job type in queue
     // delay - delay job for x ms, set to 0 to not delay
+    // delayUntil - delay until a javascript date
     Cue.addTask = function(jobName, options, data) {
 
         var isAsync = options.isAsync || false;
         var unique = options.unique || false;
         var delay = options.delay || 0;
+
+        // if delayUntil is not set then set to now
+        var delayUntil = options.delayUntil || new Date();
 
         check(jobName, String);
         check(isAsync, Match.OneOf(null, Boolean));
@@ -127,9 +134,13 @@ if (Meteor.isServer) {
 
         if (delay) {
             Meteor.setTimeout(function() {
-                Cue.addTask(jobName, {isAsync:isAsync, unique:unique, delay:0}, data);
+                Cue.addTask(jobName, {isAsync:isAsync, unique:unique, delay:0, delayUntil:delayUntil}, data);
             }, delay);
             return;
+        }
+
+        if (delayUntil) {
+
         }
 
         if (options.unique) {
@@ -139,7 +150,8 @@ if (Meteor.isServer) {
                 data:data,
                 doing:false,
                 numTries:0,
-                createdAt: new Date()
+                createdAt: new Date(),
+                delayUntil:delayUntil
             }});
         } else {
             CueTasks.insert({
@@ -148,7 +160,8 @@ if (Meteor.isServer) {
                 data:data,
                 doing:false,
                 numTries:0,
-                createdAt: new Date()
+                createdAt: new Date(),
+                delayUntil:delayUntil
             });
         }
     };
@@ -164,7 +177,7 @@ if (Meteor.isServer) {
         do {
             // get a task
             task = CueTasks.findAndModify({
-                query: {doing:false, jobName:{$nin:skipTypes}},
+                query: {doing:false, jobName:{$nin:skipTypes}, delayUntil: {$lte:new Date()}},
                 update: {$set:{doing:true}, $inc:{numTries:1}},
                 sort: {createdAt:1},
                 new: true
@@ -307,7 +320,8 @@ if (Meteor.isServer) {
                     if (job.retryOnError) {
                         if (task.numTries < self.maxTaskTries) {
                             // mark task to be done again
-                            CueTasks.update(task._id, {$set:{doing:false, error:error}});
+                            var du = new Date(new Date().getTime() + delayAfterError);
+                            CueTasks.update(task._id, {$set:{doing:false, error:error, delayUntil:du}});
                         } else {
                             CueTasks.remove(task._id);
                         }
