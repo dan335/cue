@@ -1,8 +1,6 @@
 Job queue for Meteor
 
-Used in Dominus https://dominusgame.net
-
-Works across multiple servers.
+Used in Dominus https://dominusgame.net https://github.com/dan335/dominus
 
 
 Example
