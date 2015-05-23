@@ -70,3 +70,7 @@ API
 
     // stats are reset daily, shouldn't need to call this
     Cue.resetStats()
+
+TODO
+---
+* Handling errors needs work.
