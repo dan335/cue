@@ -320,7 +320,7 @@ if (Meteor.isServer) {
                     if (job.retryOnError) {
                         if (task.numTries < self.maxTaskTries) {
                             // mark task to be done again
-                            var du = new Date(new Date().getTime() + delayAfterError);
+                            var du = new Date(new Date().getTime() + self.delayAfterError);
                             CueTasks.update(task._id, {$set:{doing:false, error:error, delayUntil:du}});
                         } else {
                             CueTasks.remove(task._id);
