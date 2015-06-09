@@ -61,6 +61,7 @@ if (Meteor.isServer) {
     // start doing tasks
     Cue.start = function() {
         var self = this;
+        console.log('Cue started');
         self.stop();
         CueData.update({name: 'stopped'}, {$set: {value:false}});
 
@@ -77,6 +78,20 @@ if (Meteor.isServer) {
     Cue.stop = function() {
         Meteor.clearInterval(this.intervalHandle);
         CueData.update({name: 'stopped'}, {$set: {value:true}});
+    };
+
+    
+
+    // pause starting tasks
+    Cue.pause = function() {
+      CueData.update({name: 'stopped'}, {$set: {value:true}});
+    }
+
+
+    // unpause starting tasks
+    Cue.unpause = function() {
+      var self = this;
+      CueData.update({name: 'stopped'}, {$set: {value:false}});
     };
 
 

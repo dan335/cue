@@ -26,6 +26,14 @@ if (Meteor.isServer) {
             Cue.start()
         },
 
+        cuePause: function() {
+          Cue.pause();
+        },
+
+        cueUnpause: function() {
+          Cue.unpause();
+        },
+
         cueRestartInProgressTasks: function() {
             Cue.restartInProgressTasks()
         },

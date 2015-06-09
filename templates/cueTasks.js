@@ -27,14 +27,14 @@ if (Meteor.isClient) {
             Meteor.call('cueDropTasks');
         },
 
-        'click #finishThenStopButton': function(event, template) {
+        'click #unpauseButton': function(event, template) {
             event.preventDefault();
-            Meteor.call('cueStop');
+            Meteor.call('cueUnpause');
         },
 
-        'click #startButton': function(event, template) {
+        'click #pauseButton': function(event, template) {
             event.preventDefault();
-            Meteor.call('cueStart');
+            Meteor.call('cuePause');
         },
 
         'click #dropInProgressTasksButton': function(event, template) {

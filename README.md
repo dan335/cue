@@ -41,11 +41,15 @@ API
     // drop all tasks
     Cue.dropTasks()
 
+    // call once to start processing tasks
+    Cue.start()
+
     Cue.dropTask(taskId)
     Cue.dropInProgressTasks()
     Cue.restartInProgressTasks()
-    Cue.start()
     Cue.stop()
+    Cue.pause()
+    Cue.unpause()
 
     // define a job
     // options = retryOnError, maxMs, maxAtOnce
