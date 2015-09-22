@@ -1,13 +1,13 @@
 Package.describe({
     name: 'danimal:cue',
-    version: '1.1.5',
+    version: '1.1.6',
     summary: 'Job Queue for Meteor',
     git: 'https://github.com/dan335/cue',
     documentation: 'README.md'
 });
 
 Package.onUse(function(api) {
-    api.versionsFrom('1.1');
+    api.versionsFrom('1.2');
     api.use(['check', 'mongo']);
     api.use('templating', 'client');
     api.use('reactive-var', 'client');
