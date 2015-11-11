@@ -24,6 +24,7 @@ if (Meteor.isClient) {
         },
 
         humanize: function(num) {
+          if (num) {
             var dur = moment.duration(Math.round(num))
             var ms = dur.milliseconds()
             var sec = dur.seconds()
@@ -49,12 +50,17 @@ if (Meteor.isClient) {
             }
 
             return str
+          }
         },
 
         round: function(num) {
+          if (num) {
             var parts = num.toString().split(".");
             parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
             return parts.join(".");
+          } else {
+            return '-';
+          }
         }
     })
 
