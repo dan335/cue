@@ -11,8 +11,8 @@ Package.onUse(function(api) {
     api.use(['check', 'mongo']);
     api.use('templating', 'client');
     api.use('reactive-var', 'client');
-    api.use('momentjs:moment');
-    api.use('fongandrew:find-and-modify');
+    api.use('momentjs:moment@2.10.6');
+    api.use('fongandrew:find-and-modify@0.2.1');
     api.addFiles([
         'collections.js',
         'templates/methods.js'
