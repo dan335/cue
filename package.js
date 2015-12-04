@@ -1,6 +1,6 @@
 Package.describe({
     name: 'danimal:cue',
-    version: '1.1.7',
+    version: '1.1.8',
     summary: 'Job Queue for Meteor',
     git: 'https://github.com/dan335/cue',
     documentation: 'README.md'
@@ -11,8 +11,8 @@ Package.onUse(function(api) {
     api.use(['check', 'mongo']);
     api.use('templating', 'client');
     api.use('reactive-var', 'client');
-    api.use('momentjs:moment@2.10.6');
-    api.use('fongandrew:find-and-modify@0.2.1');
+    api.use('momentjs:moment');
+    api.use('fongandrew:find-and-modify');
     api.addFiles([
         'collections.js',
         'templates/methods.js'
